@@ -1,0 +1,256 @@
+                       .model small
+.stack 100h
+.data
+    head db ' o ',0
+    body db '/|\',0
+    legs db '/ \',0
+    girlHead db ' o ',0
+    girlBody db '-|-',0
+    girlLegs db '/ \',0
+    posX db 10
+    posY db 15
+    oldPosX db 10
+    oldPosY db 15
+    girlPosX db 70
+    girlPosY db 15
+    pathY db 17
+    keyCode db 0
+    minDistance db 10
+
+.code
+start:
+    mov ax, @data
+    mov ds, ax
+    mov ax, 0003h
+    int 10h
+    call clear_screen
+    call draw_path
+    call draw_stickman
+    call draw_girl
+
+main_loop:
+    mov ah, 00h
+    int 16h
+    cmp al, 27
+    je exit_program
+    mov [keyCode], al
+    cmp byte ptr [keyCode], 'a'
+    jb check_movement
+    cmp byte ptr [keyCode], 'z'
+    ja check_movement
+    sub byte ptr [keyCode], 32
+
+check_movement:
+    mov al, [posX]
+    mov [oldPosX], al
+    mov al, [posY]
+    mov [oldPosY], al
+    cmp byte ptr [keyCode], 'A'
+    je move_left
+    cmp byte ptr [keyCode], 'D'
+    je move_right
+    jmp main_loop
+
+move_left:
+    cmp byte ptr [posX], 5
+    jle main_loop
+    sub byte ptr [posX], 5
+    call clear_old_stickman
+    call draw_stickman
+    jmp main_loop
+
+move_right:
+    mov al, [girlPosX]
+    sub al, [minDistance]
+    cmp [posX], al
+    jge main_loop
+    cmp byte ptr [posX], 74
+    jge main_loop
+    add byte ptr [posX], 5
+    call clear_old_stickman
+    call draw_stickman
+    jmp main_loop
+
+draw_path:
+    mov ah, 02h
+    mov bh, 0
+    mov dh, [pathY]
+    mov dl, 0
+    int 10h
+    mov cx, 80
+    mov al, 196
+    mov ah, 0Eh
+draw_path_loop:
+    int 10h
+    loop draw_path_loop
+    ret
+
+clear_old_stickman:
+    mov ah, 02h
+    mov bh, 0
+    mov dh, [oldPosY]
+    mov dl, [oldPosX]
+    int 10h
+    mov cx, 3
+    mov al, ' '
+    mov ah, 0Eh
+clear_head_loop:
+    int 10h
+    loop clear_head_loop
+    mov ah, 02h
+    mov bh, 0
+    mov dh, [oldPosY]
+    inc dh
+    mov dl, [oldPosX]
+    int 10h
+    mov cx, 3
+    mov al, ' '
+    mov ah, 0Eh
+clear_body_loop:
+    int 10h
+    loop clear_body_loop
+    mov ah, 02h
+    mov bh, 0
+    mov dh, [oldPosY]
+    add dh, 2
+    mov dl, [oldPosX]
+    int 10h
+    mov cx, 3
+    mov al, ' '
+    mov ah, 0Eh
+clear_legs_loop:
+    int 10h
+    loop clear_legs_loop
+    mov al, [pathY]
+    cmp [oldPosY], al
+    je repair_path_head
+    mov al, [pathY]
+    dec al
+    cmp [oldPosY], al
+    je repair_path_body
+    mov al, [pathY]
+    sub al, 2
+    cmp [oldPosY], al
+    je repair_path_legs
+    jmp clear_done
+
+repair_path_head:
+    mov ah, 02h
+    mov bh, 0
+    mov dh, [pathY]
+    mov dl, [oldPosX]
+    int 10h
+    mov cx, 3
+    mov al, 196
+    mov ah, 0Eh
+repair_path_head_loop:
+    int 10h
+    loop repair_path_head_loop
+    jmp clear_done
+
+repair_path_body:
+    mov ah, 02h
+    mov bh, 0
+    mov dh, [pathY]
+    mov dl, [oldPosX]
+    int 10h
+    mov cx, 3
+    mov al, 196
+    mov ah, 0Eh
+repair_path_body_loop:
+    int 10h
+    loop repair_path_body_loop
+    jmp clear_done
+
+repair_path_legs:
+    mov ah, 02h
+    mov bh, 0
+    mov dh, [pathY]
+    mov dl, [oldPosX]
+    int 10h
+    mov cx, 3
+    mov al, 196
+    mov ah, 0Eh
+repair_path_legs_loop:
+    int 10h
+    loop repair_path_legs_loop
+
+clear_done:
+    ret
+
+draw_stickman:
+    mov ah, 02h
+    mov bh, 0
+    mov dh, [posY]
+    mov dl, [posX]
+    int 10h
+    mov si, offset head
+    call print_string
+    mov ah, 02h
+    mov bh, 0
+    mov dh, [posY]
+    inc dh
+    mov dl, [posX]
+    int 10h
+    mov si, offset body
+    call print_string
+    mov ah, 02h
+    mov bh, 0
+    mov dh, [posY]
+    add dh, 2
+    mov dl, [posX]
+    int 10h
+    mov si, offset legs
+    call print_string
+    ret
+
+draw_girl:
+    mov ah, 02h
+    mov bh, 0
+    mov dh, [girlPosY]
+    mov dl, [girlPosX]
+    int 10h
+    mov si, offset girlHead
+    call print_string
+    mov ah, 02h
+    mov bh, 0
+    mov dh, [girlPosY]
+    inc dh
+    mov dl, [girlPosX]
+    int 10h
+    mov si, offset girlBody
+    call print_string
+    mov ah, 02h
+    mov bh, 0
+    mov dh, [girlPosY]
+    add dh, 2
+    mov dl, [girlPosX]
+    int 10h
+    mov si, offset girlLegs
+    call print_string
+    ret
+
+clear_screen:
+    mov ax, 0600h
+    mov bh, 07h
+    mov cx, 0000h
+    mov dx, 184Fh
+    int 10h
+    ret
+
+print_string:
+    mov ah, 0Eh
+print_loop:
+    lodsb
+    or al, al
+    jz done_print
+    int 10h
+    jmp print_loop
+done_print:
+    ret
+
+exit_program:
+    mov ax, 4C00h
+    int 21h
+
+end start
